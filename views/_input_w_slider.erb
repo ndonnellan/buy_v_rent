@@ -1,0 +1,20 @@
+<div class="row input">
+  <div class="col-xs-6 col-sm-5 no-pad">
+    <p><%= data[:name] + ': '%></p>
+  </div>
+  <div class="col-xs-6 col-sm-2 no-pad">
+    <input 
+      id="<%=data[:id] %>" 
+      type="text" 
+      value="<%= data[:value]%>" 
+      data-min="<%= data[:min]%>" 
+      data-max="<%= data[:max]%>" 
+      data-step="<%= data[:step]%>">
+    </input>
+  </div>
+
+  <div class="col-xs-12 col-sm-5">
+    <div id="<%=data[:id]%>-slider" class="slider"></div>
+  </div>
+
+</div>

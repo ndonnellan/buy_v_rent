@@ -1,0 +1,20 @@
+
+<div id="chart1" class="col-xs-12" >
+  <svg style="height: 500px;"></svg>
+</div>
+<div class="col-sm-3">
+  <p id="monthly-payment"></p>
+  <p id="monthly-payment-total"></p>
+</div>
+
+<div class="input-group col-sm-9">
+    <% data = some_data() %>
+    <% (data.count / 6).times do |i| %>
+      <div class="col-sm-6">
+      <% group = data.slice!(0, 6) %>
+      <% group.each do |d| %>
+        <%= partial :'input_w_slider', locals: { data:d } %>
+      <% end %>
+      </div>
+    <% end %>
+</div>
