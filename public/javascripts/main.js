@@ -111,104 +111,149 @@ function loanPayment(initial_balance, term, rate) {
   };
 }
 
+var inds = {
+  'loan_balance': 0,
+  'owner_account': 1,
+  'renter_account': 2,
+  'owner_net': 3,
+  'buy_minus_rent': 4
+};
 
+var chartData =  [
+  {
+    values: [],
+    key: "Loan Balance",
+    color: "#ff7f0e"
+  },
+  {
+    values: [],
+    key: "Owner Account",
+    color: "#2ca02c"
+  },
+  {
+    values: [],
+    key: "Renter Account",
+    color: "#2222ff"
+  },
+  {
+    values: [],
+    key: "Net Owner Position",
+    color: "#667711"
+  },
+  {
+    area: true,
+    values: [],
+    key: "Buy minus Rent",
+    color: "red"
+  }
+];
+
+var loan_balances = [];
+var invest_owner_balances = [];
+var invest_renter_balances = [];
+var net_owner_balances = [];
+
+var houseValue = function(initial_price, t) {
+  return initial_price * Math.pow(1.0 + params['appreciation-rate']/100.0/12, t);
+};
+
+var getOwnerNetBalance = function(house_value, closing_costs, t){
+  var hv = house_value;
+  return invest_owner_balances[t] - loan_balances[t] + hv - hv*closing_costs;
+};
 
 function financeData() {
-  
+  var L = params['disp-years']*12;
+
+  // Adjust length of arrays
+  loan_balances.length = L;
+  invest_owner_balances.length = L;
+  invest_renter_balances.length = L;
+  net_owner_balances.length = L;
+
+  chartData[inds['loan_balance']].values.length = L;
+  chartData[inds['owner_account']].values.length = L;
+  chartData[inds['renter_account']].values.length = L;
+  chartData[inds['owner_net']].values.length = L;
+  chartData[inds['buy_minus_rent']].values.length = L;
+
   var hp = params['house-price'],
       dp = params['down-payment'];
-  var loan_balances = [ hp * (1.0 - dp/100.0 ) ];
 
-  var houseValue = function(t) {
-    return hp * Math.pow(1.0 + params['appreciation-rate']/100.0/12, t);
-  };
+
+  loan_balances[0] = hp * (1.0 - dp/100.0 );
+
 
   var closing_buy = params['closing-costs-buy'] / 100.0;
   var closing_sell = params['closing-costs-sell'] / 100.0;
   
-  var invest_owner_balances = [0];
+  invest_owner_balances[0] = 0;
 
-  var invest_renter_balances = [hp * ( dp/100.0 ) + houseValue(0)*closing_buy];
+  invest_renter_balances[0] = hp * ( dp/100.0 ) + hp*closing_buy;
 
-  var getOwnerNetBalance = function(t){
-    var hv = houseValue(t);
-    return invest_owner_balances[t] - loan_balances[t] + hv - hv*closing_sell;
-  };
-
-  var net_owner_balances = [getOwnerNetBalance(0)];
+  net_owner_balances[0] = getOwnerNetBalance(hp, closing_sell, 0);
   
   var calcPayment = loanPayment(loan_balances[0], params['number-years'], params['rate-30yr']);
 
   $("#monthly-payment").text("Est Payment: " + Math.round(calcPayment(loan_balances[0])));
 
-  var monthly_total = Math.round(calcPayment(loan_balances[0]) + houseValue(0) * params['tax-rate']/100.0/12 + houseValue(0) * params['maintenance-rate']/100.0/12);
+  var monthly_total = Math.round(calcPayment(loan_balances[0]) + hp * params['tax-rate']/100.0/12 + hp * params['maintenance-rate']/100.0/12);
 
   $("#monthly-payment-total").text("Est Payment (w/taxes and fees): " + monthly_total);
 
   var irr = params['investment-rate']/100.0/12;
   var ib = 0, io = 0, irent = 0;
-  for (var t = 1; t < params['disp-years']*12; t++) {
+  var hv;
+  for (var t = 1; t < L; t++) {
+    
+    hv = houseValue(hp, t);
 
-
-    loan_payment = calcPayment(loan_balances.last());
+    loan_payment = calcPayment(loan_balances[t-1]);
 
     rent_payment = params['equiv-rent'] * Math.pow( 1 + params['appreciation-rate']/100.0/12, t);
 
-    maintenance = houseValue(t) * params['maintenance-rate']/100.0/12;
+    maintenance = hv * params['maintenance-rate']/100.0/12;
 
-    taxes = houseValue(t) * params['tax-rate']/100.0/12;
+    taxes = houseValue(hp, t) * params['tax-rate']/100.0/12;
     diff = rent_payment - (loan_payment + maintenance + taxes);
 
-    io = loan_balances.last();
-    loan_balances.push(
-      io - loan_payment + io * params['rate-30yr']/100.0/12 );
+    io = loan_balances[t-1];
+    loan_balances[t] = io - loan_payment + io * params['rate-30yr']/100.0/12 ;
 
-    ib = invest_owner_balances.last() * (1 + irr);
-    invest_owner_balances.push(
-      diff + ib);
+    ib = invest_owner_balances[t-1] * (1 + irr);
+    invest_owner_balances[t] = diff + ib;
 
-    irent = invest_renter_balances.last() * (1 + irr);
-    invest_renter_balances.push(irent);
+    irent = invest_renter_balances[t-1] * (1 + irr);
+    invest_renter_balances[t] = irent;
 
-    net_owner_balances.push(
-      getOwnerNetBalance(t));
+    net_owner_balances[t] = getOwnerNetBalance(hv, closing_sell, t);
   }
 
-  var a = [], b = [], c = [], d = [], e = [];
-  for (t=0; t<params['disp-years']*12; t++){
-    a.push({x:t/12.0, y:loan_balances[t]});
-    b.push({x:t/12.0, y:invest_owner_balances[t]});
-    c.push({x:t/12.0, y:invest_renter_balances[t]});
-    d.push({x:t/12.0, y:net_owner_balances[t]});
-    e.push({x:t/12.0, y:net_owner_balances[t] - invest_renter_balances[t]});
+
+  var tx;
+  for (t = 0; t < L; t++){
+    tx = t / 12.0;
+
+    chartData[inds['loan_balance']].values[t] = {
+      x: tx, y:loan_balances[t]
+    };
+
+    chartData[inds['owner_account']].values[t] = {
+      x: tx, y:invest_owner_balances[t]
+    };
+
+    chartData[inds['renter_account']].values[t] = {
+      x: tx, y:invest_renter_balances[t]
+    };
+
+    chartData[inds['owner_net']].values[t] = {
+      x: tx, y:net_owner_balances[t]
+    };
+
+    chartData[inds['buy_minus_rent']].values[t] = {
+      x: tx, y:net_owner_balances[t] - invest_renter_balances[t]
+    };
   }
 
-  return [
-    {
-      values: a,
-      key: "Loan Balance",
-      color: "#ff7f0e"
-    },
-    {
-      values: b,
-      key: "Owner Account",
-      color: "#2ca02c"
-    },
-    {
-      values: c,
-      key: "Renter Account",
-      color: "#2222ff"
-    },
-    {
-      values: d,
-      key: "Net Owner Position",
-      color: "#667711"
-    },
-    {
-      area: true,
-      values: e,
-      key: "Buy minus Rent",
-      color: "red"
-    }
-  ];
+  return chartData;
 }
