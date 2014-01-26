@@ -5,4 +5,4 @@ Interactive graphic for comparing house buying vs. renting. Heavily inspired by 
 
 Check out in action here: [heroku link](http://safe-refuge-8699.herokuapp.com/) (may take some time to wake from sleep)
 
-![Buy versus rent screenshot](https://github.com/ndonnellan/buy_v_rent/master/public/images/screenshot.png "Screenshot")
+![Buy versus rent screenshot](/public/images/screenshot.png "Screenshot")
